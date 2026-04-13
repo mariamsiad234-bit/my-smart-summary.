@@ -1,113 +1,83 @@
 import streamlit as st
 import google.generativeai as genai
-import fitz  # PyMuPDF
+import fitz
 from docx import Document
 from io import BytesIO
 from PIL import Image
 
-# 1. إعداد الـ API مع نظام "الإنقاذ الذاتي" للموديل
+# 1. إعداد الـ API
 API_KEY = "AIzaSyDjbRuvdwVpJimDS6hpqH7hzoszP7Ud-rI"
 genai.configure(api_key=API_KEY)
 
-def get_best_model():
-    # بنجرب الموديلات المتاحة بالترتيب عشان نتخطى خطأ NotFound
-    for m_name in ['gemini-1.5-flash', 'models/gemini-1.5-flash', 'gemini-pro']:
+# 2. وظيفة ذكية لجلب الموديل المتاح (حل مشكلة NotFound)
+def load_model():
+    # بنجرب كل المسميات الممكنة عشان نهرب من الـ NotFound
+    models_to_try = ['gemini-1.5-flash', 'gemini-pro', 'models/gemini-1.5-flash']
+    for m_name in models_to_try:
         try:
-            tmp_model = genai.GenerativeModel(m_name)
-            # تجربة وهمية للتأكد من الموديل
-            tmp_model.generate_content("hi")
-            return tmp_model
+            m = genai.GenerativeModel(m_name)
+            # تجربة وهمية للتأكد
+            m.generate_content("test")
+            return m, m_name
         except:
             continue
-    return genai.GenerativeModel('gemini-pro')
+    return None, None
 
-model = get_best_model()
+model, active_model_name = load_model()
 
-# 2. تصميم الواجهة الإمبراطورية (CSS الاحترافي)
-st.set_page_config(page_title="المنصة الذكية Pro", layout="wide")
+# 3. واجهة المستخدم الاحترافية
+st.set_page_config(page_title="AI Ultra Pro", layout="wide")
+
+# لو الموديل مش متاح، بنعرض تنبيه شيك بدل الشاشة الحمراء
+if not model:
+    st.error("⚠️ عذراً يا بطل، الموديل مش متاح في منطقتك حالياً أو مفتاح الـ API محتاج تفعيل. جرب تعمل Reboot للتطبيق.")
+    st.stop()
 
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Cairo&display=swap');
     * { font-family: 'Cairo', sans-serif; text-align: right; }
-    .stApp { background: #f4f7f9; }
-    /* كارت احترافي */
-    .pro-card {
-        background: white; padding: 25px; border-radius: 20px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.05); border: 1px solid #e0e6ed;
-        margin-bottom: 20px; transition: 0.3s;
-    }
-    .pro-card:hover { transform: translateY(-5px); }
-    /* تنسيق القرآن */
-    .quran-box {
-        background: #fffdf5; border-right: 10px solid #10b981;
-        padding: 25px; border-radius: 15px; font-size: 22px;
-        color: #064e3b; box-shadow: inset 0 0 10px rgba(0,0,0,0.02);
-    }
+    .stApp { background: #fdfdfd; }
+    .main-box { background: white; padding: 20px; border-radius: 15px; border: 2px solid #3b82f6; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
     </style>
     """, unsafe_allow_html=True)
 
-# 3. محرك استخراج البيانات (منع الـ TypeError)
-def get_clean_content(f):
-    try:
-        if f.type == "application/pdf":
-            doc = fitz.open(stream=f.read(), filetype="pdf")
-            return " ".join([p.get_text() for p in doc])
-        elif f.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-            doc = Document(f)
-            return "\n".join([p.text for p in doc.paragraphs])
-        elif f.type.startswith('image/'):
-            return Image.open(f)
-        return f.read().decode("utf-8", errors="ignore")
-    except: return "خطأ في قراءة الملف"
-
 # --- التبويبات الرئيسية ---
-t1, t2, t3 = st.tabs(["📑 التلخيص والقوالب", "💬 الشات الذكي", "📖 الموسوعة القرآنية"])
+t1, t2, t3 = st.tabs(["📑 التلخيص والقوالب", "💬 الشات الذكي", "📖 واحة القرآن"])
 
 with t1:
-    st.markdown('<div class="pro-card"><h2>🎯 التلخيص الفائق وتصميم القوالب</h2></div>', unsafe_allow_html=True)
-    c1, c2 = st.columns(2)
-    with c1:
-        u_files = st.file_uploader("ارفع ملفاتك (PDF, Word, صور)", accept_multiple_files=True)
-        lang = st.radio("اللغة:", ["العربية", "English"], horizontal=True)
-    with c2:
-        u_temp = st.file_uploader("🖼️ قالب التنسيق (اختياري)", type=['jpg', 'png'])
-        out_format = st.selectbox("صيغة المخرج:", ["PDF احترافي", "Word منسق", "صورة جذابة"])
-
-    if u_files and st.button("🚀 ولّد الملخص الإمبراطوري"):
-        with st.spinner("⚡ جاري استخراج العظمة..."):
-            all_data = []
-            for f in u_files:
-                data = get_clean_content(f)
-                all_data.append(data if isinstance(data, Image.Image) else f"النص: {data}")
+    st.markdown('<div class="main-box"><h2>🎯 ملخصات ذكية بتصميم القوالب</h2></div>', unsafe_allow_html=True)
+    f = st.file_uploader("ارفع ملفاتك", accept_multiple_files=True)
+    temp = st.file_uploader("🖼️ قالب التنسيق", type=['jpg', 'png'])
+    if f and st.button("🚀 ولّد الملخص"):
+        with st.spinner("⚡ شغالين يا بطل..."):
+            contents = ["لخص بأسلوب احترافي جداً بجدول وأسئلة ونكتة. قلد القالب إن وجد."]
+            for file in f:
+                if file.type.startswith('image/'): contents.append(Image.open(file))
+                elif file.type == "application/pdf":
+                    doc = fitz.open(stream=file.read(), filetype="pdf")
+                    contents.append(" ".join([p.get_text() for p in doc]))
+                else: contents.append(file.read().decode())
+            if temp: contents.append(Image.open(temp))
             
-            prompt = f"قم بتلخيص المحتوى بـ {lang} باحترافية تامة. استخدم جداول وأسئلة ذكاء ونكتة. قلد القالب المرفق في التنسيق والألوان."
-            if u_temp: all_data.append(Image.open(u_temp))
-            
-            res = model.generate_content([prompt] + all_data)
-            st.markdown(f'<div class="pro-card" style="border-right: 5px solid blue;">{res.text}</div>', unsafe_allow_html=True)
+            res = model.generate_content(contents)
+            st.markdown(f'<div class="main-card">{res.text}</div>', unsafe_allow_html=True)
 
 with t2:
-    st.subheader("💬 دردشة ذكية وسلسة")
-    if "chat_history" not in st.session_state: st.session_state.chat_history = []
-    
-    for m in st.session_state.chat_history:
+    if "msgs" not in st.session_state: st.session_state.msgs = []
+    for m in st.session_state.msgs:
         with st.chat_message(m["role"]): st.markdown(m["content"])
-
-    if p := st.chat_input("تحدث معي، اطلب تلخيصاً، أو اسأل عن أي شيء..."):
-        st.session_state.chat_history.append({"role": "user", "content": p})
+    if p := st.chat_input("تحدث معي..."):
+        st.session_state.msgs.append({"role": "user", "content": p})
         with st.chat_message("user"): st.markdown(p)
-        
-        with st.chat_message("assistant"):
-            r = model.generate_content(p)
-            st.markdown(r.text)
-            st.session_state.chat_history.append({"role": "assistant", "content": r.text})
+        r = model.generate_content(p)
+        st.session_state.msgs.append({"role": "assistant", "content": r.text})
+        with st.chat_message("assistant"): st.markdown(r.text)
 
 with t3:
-    st.markdown('<div class="pro-card"><h2>📖 الموسوعة القرآنية الشاملة</h2></div>', unsafe_allow_html=True)
-    q_query = st.text_input("أدخل الآية أو الموضوع (تفسير، أسباب نزول، إكمال):")
-    if q_query:
-        with st.spinner("جاري البحث في أمهات التفاسير..."):
-            q_prompt = f"بصفتك خبير في علوم القرآن، فسر الآية التالية تفسيراً مجمعاً (ابن كثير والطبري) بأسلوب رزين وفصيح وأكملها: {q_query}"
-            q_res = model.generate_content(q_prompt)
-            st.markdown(f'<div class="quran-box">{q_res.text}</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-box"><h2>📖 الموسوعة القرآنية</h2></div>', unsafe_allow_html=True)
+    q = st.text_input("أدخل الآية أو الموضوع:")
+    if q:
+        with st.spinner("جاري استحضار التفسير..."):
+            res = model.generate_content(f"فسر وأكمل ووضح أسباب نزول بأسلوب رزين ملم بكافة التفاسير: {q}")
+            st.markdown(f'<div style="background:#fffcf0; padding:20px; border-radius:10px;">{res.text}</div>', unsafe_allow_html=True)
