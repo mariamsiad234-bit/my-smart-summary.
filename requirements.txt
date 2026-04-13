@@ -2,4 +2,7 @@ streamlit
 google-generativeai
 PyMuPDF
 python-docx
+reportlab
 Pillow
+arabic-reshaper
+python-bidi
