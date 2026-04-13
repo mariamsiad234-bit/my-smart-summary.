@@ -5,80 +5,108 @@ from docx import Document
 from io import BytesIO
 from PIL import Image
 
-# 1. إعداد الـ API بأعلى احترافية
+# 1. إعدادات الـ API والموديل
 API_KEY = "AIzaSyDjbRuvdwVpJimDS6hpqH7hzoszP7Ud-rI"
 genai.configure(api_key=API_KEY)
+model = genai.GenerativeModel('gemini-1.5-flash')
 
-# إعدادات الموديل (السرعة القصوى والذكاء)
-generation_config = {
-  "temperature": 0.7, # توازن بين الإبداع والدقة
-  "top_p": 0.95,
-  "top_k": 64,
-  "max_output_tokens": 8192,
-}
-
-model = genai.GenerativeModel(
-  model_name="gemini-1.5-flash",
-  generation_config=generation_config,
-)
-
-# 2. واجهة مستخدم (UI) تليق بمشروعك
-st.set_page_config(page_title="المنصة الشاملة AI", page_icon="⚡", layout="wide")
+# 2. تصميم الواجهة الاحترافي (Advanced CSS)
+st.set_page_config(page_title="المساعد الذكي Pro", page_icon="🪄", layout="wide")
 
 st.markdown("""
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
     <style>
-    .stApp { background: #f8fafc; }
-    .main-card { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
-    .quran-style { font-size: 20px; color: #064e3b; background: #ecfdf5; padding: 20px; border-radius: 10px; border-right: 8px solid #10b981; line-height: 1.8; }
+    * { font-family: 'Cairo', sans-serif; }
+    .stApp { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); }
+    
+    /* تأثير الزجاج للبوكسات */
+    .glass-card {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(10px);
+        border-radius: 20px;
+        padding: 25px;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+        margin-bottom: 20px;
+    }
+    
+    /* أزرار جذابة */
+    .stButton>button {
+        background: linear-gradient(45deg, #00dbde 0%, #fc00ff 100%);
+        color: white; border: none; border-radius: 12px;
+        transition: 0.3s; transform: scale(1);
+    }
+    .stButton>button:hover { transform: scale(1.02); box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+    
+    /* تنسيق القرآن */
+    .quran-text {
+        background: #fffdf5; border-right: 10px solid #10b981;
+        padding: 20px; border-radius: 15px; font-size: 22px;
+        color: #064e3b; box-shadow: inset 0 0 10px rgba(0,0,0,0.02);
+    }
     </style>
     """, unsafe_allow_html=True)
 
-# 3. تنظيم الأقسام (Tabs)
-tab1, tab2, tab3 = st.tabs(["💎 التلخيص والقوالب", "💬 الشات الذكي", "📖 الباحث القرآني"])
+# --- محرك معالجة النصوص ---
+def get_text(file):
+    if file.type == "application/pdf":
+        doc = fitz.open(stream=file.read(), filetype="pdf")
+        return " ".join([p.get_text() for p in doc])
+    elif file.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+        doc = Document(file)
+        return "\n".join([p.text for p in doc.paragraphs])
+    return ""
 
-# --- القسم الأول: التلخيص الاحترافي ---
+# --- الأقسام الرئيسية ---
+tab1, tab2, tab3 = st.tabs(["✨ الملخص السحري", "💬 الشات المطور", "📖 واحة القرآن"])
+
 with tab1:
-    st.subheader("🎯 ملخصات ذكية وتصميم قوالب")
-    col_a, col_b = st.columns(2)
-    with col_a:
-        file = st.file_uploader("ارفع الملف (PDF, Word, Audio, Image)", type=['pdf', 'docx', 'jpg', 'png', 'mp3', 'wav'])
-    with col_b:
-        template = st.file_uploader("🖼️ ارفع القالب اللي عايزنا نقلده", type=['jpg', 'png'])
+    st.markdown('<div class="glass-card"><h1>🪄 التلخيص الاحترافي بالقوالب</h1></div>', unsafe_allow_html=True)
+    c1, c2 = st.columns([2,1])
+    with c1:
+        u_file = st.file_uploader("ارفع (PDF, Word, صوت)", type=['pdf', 'docx', 'mp3', 'wav', 'm4a'], key="main_u")
+    with c2:
+        u_temp = st.file_uploader("🖼️ قالب التنسيق", type=['jpg', 'png'], key="temp_u")
     
-    lang = st.segmented_control("اللغة المطلوبة", ["العربية", "English"], default="العربية")
-
-    if file and st.button("✨ توليد الملخص الاحترافي"):
-        with st.spinner("⚡ الذكاء الاصطناعي شغال حالياً..."):
-            prompt = f"قم بتلخيص المحتوى المرفق بأسلوب احترافي شامل بـ {lang}. استخدم جداول، أسئلة MCQs، وكاريكاتير مضحك. لو ريكورد اذكر مدته."
-            content_to_send = [prompt, file]
-            if template: content_to_send.append(Image.open(template))
+    style = st.select_slider("اختر نمط التنسيق:", ["بسيط", "أكاديمي مكثف", "إبداعي ملون", "خرائط ذهنية نصية"])
+    
+    if u_file and st.button("🚀 ولّد العظمة"):
+        with st.spinner("⚡ جاري استخراج الأفكار وتنسيقها..."):
+            text_content = get_text(u_file) if u_file.type in ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"] else ""
             
-            response = model.generate_content(content_to_send)
-            st.markdown(f'<div class="main-card">{response.text}</div>', unsafe_allow_html=True)
+            prompt = f"""
+            بصفتك خبير تنسيق ومحتوى، لخص الآتي بنمط {style}:
+            - استخدم ألوان (بالوصف النصي) وتنسيق جداول احترافي.
+            - أضف أيقونات توضيحية لكل فكرة.
+            - صمم 5 أسئلة ذكاء في النهاية.
+            - أضف 'نكتة' أو كاريكاتير وصفي يخص الموضوع.
+            """
+            inputs = [prompt, u_file] if not text_content else [prompt + text_content]
+            if u_temp: inputs.append(Image.open(u_temp))
+            
+            res = model.generate_content(inputs)
+            st.markdown(f'<div class="glass-card">{res.text}</div>', unsafe_allow_html=True)
 
-# --- القسم الثاني: الشات (بذاكرة قوية) ---
 with tab2:
-    st.subheader("💬 دردشة ذكية (Gemini Pro)")
-    if "chat_session" not in st.session_state:
-        st.session_state.chat_session = model.start_chat(history=[])
-
-    for message in st.session_state.chat_session.history:
-        with st.chat_message("user" if message.role == "user" else "assistant"):
-            st.markdown(message.parts[0].text)
-
-    if user_query := st.chat_input("اسأل أي شيء..."):
-        with st.chat_message("user"): st.markdown(user_query)
-        response = st.session_state.chat_session.send_message(user_query)
-        with st.chat_message("assistant"): st.markdown(response.text)
-
-# --- القسم الثالث: القرآن الكريم (تفسير وإكمال) ---
-with tab3:
-    st.subheader("📖 المساعد القرآني المتكامل")
-    mode = st.radio("الاختيار:", ["تفسير شامل", "إكمال الآية وتصحيحها"], horizontal=True)
-    quran_input = st.text_area("أدخل الآية أو جزء منها:")
+    st.markdown('<h3>💬 دردش وتحكم في ملفاتك</h3>', unsafe_allow_html=True)
+    if "chat_history" not in st.session_state: st.session_state.chat_history = []
     
-    if quran_input and st.button("🔍 بحث"):
-        with st.spinner("جاري استخراج البيانات من كتب التفسير..."):
-            q_prompt = f"بصفتك خبير في علوم القرآن، قم بـ {mode} للنص التالي: {quran_input}. اذكر اسم السورة ورقم الآية والتفسير المعتمد فقهياً ولغوياً."
-            q_response = model.generate_content(q_prompt)
-            st.markdown(f'<div class="quran-style">{q_response.text}</div>', unsafe_allow_html=True)
+    for m in st.session_state.chat_history:
+        with st.chat_message(m["role"]): st.markdown(m["content"])
+
+    if p := st.chat_input("تحدث معي أو اطلب تلخيص جزء معين..."):
+        st.session_state.chat_history.append({"role": "user", "content": p})
+        with st.chat_message("user"): st.markdown(p)
+        
+        # الشات هنا يقدر يوصل لكل ملفاتك
+        r = model.generate_content(p)
+        st.session_state.chat_history.append({"role": "assistant", "content": r.text})
+        with st.chat_message("assistant"): st.markdown(r.text)
+
+with tab3:
+    st.markdown('<div class="glass-card"><h2>📖 الباحث القرآني الفوري</h2></div>', unsafe_allow_html=True)
+    q_query = st.text_input("اكتب الآية أو الموضوع (مثلاً: آيات الصبر، تفسير سورة الملك):")
+    if q_query:
+        with st.spinner("جاري استحضار التفسير..."):
+            q_res = model.generate_content(f"قدم تفسير دقيق وشامل وإكمال للآية: {q_query}. اعتمد مراجع التفسير الموثوقة بأسلوب فصيح.")
+            st.markdown(f'<div class="quran-text">{q_res.text}</div>', unsafe_allow_html=True)
